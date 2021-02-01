@@ -111,7 +111,7 @@ class LSE_State(object):
         for i in range(len(self.misoriented_centers_orientation_state)):
             self.misoriented_centers_orientation_state[i] = self.is_lr_edge(Pieces(i)) == self.edge_orientation_state[i]
 
-    def apply_move_sequence(self, moves = ""):
+    def apply_move_sequence(self, moves):
         for move in moves.split(" "):
             move_set = MoveSet.U if "U" in move else MoveSet.M if "M" in move else None
             if move_set is None:
@@ -131,8 +131,7 @@ class LSE_State(object):
         self.edge_orientation_state[db_index] = not self.edge_orientation_state[db_index]
 
     def is_lr_edge(self, piece):
-        return self.edge_permutation_state[piece] == Pieces.UL or self.edge_permutation_state[
-            piece] == Pieces.UR
+        return self.edge_permutation_state[piece] == Pieces.UL or self.edge_permutation_state[piece] == Pieces.UR
 
     def is_solved(self):
         return self.is_oriented() and self.is_permuted() and self.center_AUF_state[0] == 0

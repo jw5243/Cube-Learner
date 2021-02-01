@@ -1,6 +1,7 @@
 import numpy
 import time
 from LSE_State import *
+from Algorithm import *
 
 SOLVED_STATE = LSE_State()
 
@@ -45,9 +46,14 @@ def search_solved_state(scramble, depth):
     search_solutions(scramble, depth, lambda current_state: current_state == SOLVED_STATE)
 
 
+def search_oriented_state(scramble, depth):
+    search_solutions(scramble, depth, lambda current_state: current_state.is_oriented())
+
+
 if __name__ == '__main__':
-    scramble = "M2 U2 M2"
-    max_length = 10
+    scramble = "M' U2 M2 U2 M"
+    max_length = 5
     start_time = time.time()
-    search_solved_state(scramble, max_length)
+    search_oriented_state(scramble, max_length)
+    #search_solved_state(scramble, max_length)
     print(time.time() - start_time)
