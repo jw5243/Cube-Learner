@@ -7,10 +7,11 @@ SOLVED_STATE = LSE_State()
 
 def get_last_move(solution):
     move = solution.split(" ")[-1]
-    return [MoveSet.U if "U" in move else MoveSet.M, MoveType.Double if "2" in move else MoveType.Prime if "'" in move else MoveType.Standard]
+    return [MoveSet.U if "U" in move else MoveSet.M,
+            MoveType.Double if "2" in move else MoveType.Prime if "'" in move else MoveType.Standard]
 
 
-def search_solution_depth(scramble, depth):
+def search_solutions(scramble, depth, criterion):
     scrambled_state = LSE_State(SOLVED_STATE)
     scrambled_state.apply_move_sequence(scramble)
     move_set_list = list(MoveSet)
@@ -25,7 +26,7 @@ def search_solution_depth(scramble, depth):
                     current_state = LSE_State(scrambled_state)
                     current_state.apply_move(move, move_type)
                     states.append([convert_move_to_string(move, move_type), current_state])
-                    if current_state == SOLVED_STATE:
+                    if criterion(current_state):
                         print(states[-1][0])
         else:
             for previous_state in previous_states:
@@ -34,16 +35,19 @@ def search_solution_depth(scramble, depth):
                     current_state = LSE_State(previous_state[1])
                     current_state.apply_move(move, move_type)
                     states.append([previous_state[0] + " " + convert_move_to_string(move, move_type), current_state])
-                    if current_state == SOLVED_STATE:
+                    if criterion(current_state):
                         print(states[-1][0])
         previous_states = states
         states = []
-        #print(previous_states)
+
+
+def search_solved_state(scramble, depth):
+    search_solutions(scramble, depth, lambda current_state: current_state == SOLVED_STATE)
 
 
 if __name__ == '__main__':
     scramble = "M2 U2 M2"
     max_length = 10
     start_time = time.time()
-    search_solution_depth(scramble, max_length)
+    search_solved_state(scramble, max_length)
     print(time.time() - start_time)

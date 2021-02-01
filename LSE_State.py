@@ -1,6 +1,6 @@
 import numpy
 from copy import deepcopy
-from enum import Enum
+from enum import Enum, IntEnum
 
 
 class MoveSet(Enum):
@@ -11,12 +11,13 @@ class MoveType(Enum):
     Standard, Double, Prime = range(3)
 
 
-class Pieces(Enum):
+class Pieces(IntEnum):
     UR, UF, UL, UB, DF, DB = range(6)
 
 
 def convert_move_to_string(move, move_type):
-    return ("U" if move == MoveSet.U else "M") + ("" if move_type == MoveType.Standard else "2" if move_type == MoveType.Double else "'")
+    return ("U" if move == MoveSet.U else "M") + (
+        "" if move_type == MoveType.Standard else "2" if move_type == MoveType.Double else "'")
 
 
 class LSE_State(object):
@@ -25,10 +26,14 @@ class LSE_State(object):
             self.edge_orientation_state = [True for i in range(len(Pieces))]
             self.edge_permutation_state = numpy.arange(len(Pieces), dtype = int)
             self.center_AUF_state = numpy.zeros(2, dtype = int)
+
+            self.misoriented_centers_orientation_state = [True for i in range(len(Pieces))]
         else:
             self.edge_orientation_state = deepcopy(lse_state.edge_orientation_state)
             self.edge_permutation_state = deepcopy(lse_state.edge_permutation_state)
             self.center_AUF_state = deepcopy(lse_state.center_AUF_state)
+
+            self.misoriented_centers_orientation_state = [True for i in range(len(Pieces))]
 
     def __str__(self):
         data = str(self.edge_orientation_state) + "\n" + str(self.center_AUF_state) + "\nOld: UR UF UL UB DF DB\nNew: "
@@ -51,9 +56,17 @@ class LSE_State(object):
         if type(other) != LSE_State:
             return False
 
-        return self.edge_orientation_state == other.edge_orientation_state and \
-               numpy.array_equal(self.edge_permutation_state, other.edge_permutation_state) and \
+        return self.edge_orientation_state == other.edge_orientation_state and\
+               numpy.array_equal(self.edge_permutation_state, other.edge_permutation_state) and\
                numpy.array_equal(self.center_AUF_state, other.center_AUF_state)
+
+    def swap_pieces_permutation(self, piece1, piece2):
+        self.edge_permutation_state[piece1], self.edge_permutation_state[piece2] = self.edge_permutation_state[piece2],\
+                                                                                   self.edge_permutation_state[piece1]
+
+    def cycle_pieces_permutation(self, buffer, *pieces):
+        for piece in pieces:
+            self.swap_pieces_permutation(buffer, piece)
 
     def apply_move(self, move, move_type):
         if move == MoveSet.U:
@@ -73,30 +86,16 @@ class LSE_State(object):
                 2) Swap UF and DB
                 3) Swap UF and UB
                 '''
-                self.edge_permutation_state[1], self.edge_permutation_state[4] = self.edge_permutation_state[4], \
-                                                                                 self.edge_permutation_state[1]
-                self.edge_permutation_state[1], self.edge_permutation_state[5] = self.edge_permutation_state[5],\
-                                                                                 self.edge_permutation_state[1]
-                self.edge_permutation_state[1], self.edge_permutation_state[3] = self.edge_permutation_state[3],\
-                                                                                 self.edge_permutation_state[1]
-                uf_index = self.edge_permutation_state[1]
-                ub_index = self.edge_permutation_state[3]
-                df_index = self.edge_permutation_state[4]
-                db_index = self.edge_permutation_state[5]
-                self.edge_orientation_state[uf_index] = not self.edge_orientation_state[uf_index]
-                self.edge_orientation_state[ub_index] = not self.edge_orientation_state[ub_index]
-                self.edge_orientation_state[df_index] = not self.edge_orientation_state[df_index]
-                self.edge_orientation_state[db_index] = not self.edge_orientation_state[db_index]
+                self.cycle_pieces_permutation(Pieces.UF, Pieces.DF, Pieces.DB, Pieces.UB)
+                self.resorient_middle_slice()
                 self.center_AUF_state[0] += 1
             elif move_type == MoveType.Double:
                 '''
                 1) Swap UF and DB
                 2) Swap UB and DF
                 '''
-                self.edge_permutation_state[1], self.edge_permutation_state[5] = self.edge_permutation_state[5],\
-                                                                                 self.edge_permutation_state[1]
-                self.edge_permutation_state[3], self.edge_permutation_state[4] = self.edge_permutation_state[4],\
-                                                                                 self.edge_permutation_state[3]
+                self.swap_pieces_permutation(Pieces.UF, Pieces.DB)
+                self.swap_pieces_permutation(Pieces.UB, Pieces.DF)
                 self.center_AUF_state[0] += 2
             else:
                 '''
@@ -104,48 +103,54 @@ class LSE_State(object):
                 2) Swap UF and DB
                 3) Swap UF and DF
                 '''
-                self.edge_permutation_state[1], self.edge_permutation_state[3] = self.edge_permutation_state[3],\
-                                                                                 self.edge_permutation_state[1]
-                self.edge_permutation_state[1], self.edge_permutation_state[5] = self.edge_permutation_state[5],\
-                                                                                 self.edge_permutation_state[1]
-                self.edge_permutation_state[1], self.edge_permutation_state[4] = self.edge_permutation_state[4],\
-                                                                                 self.edge_permutation_state[1]
-                uf_index = self.edge_permutation_state[1]
-                ub_index = self.edge_permutation_state[3]
-                df_index = self.edge_permutation_state[4]
-                db_index = self.edge_permutation_state[5]
-                self.edge_orientation_state[uf_index] = not self.edge_orientation_state[uf_index]
-                self.edge_orientation_state[ub_index] = not self.edge_orientation_state[ub_index]
-                self.edge_orientation_state[df_index] = not self.edge_orientation_state[df_index]
-                self.edge_orientation_state[db_index] = not self.edge_orientation_state[db_index]
+                self.cycle_pieces_permutation(Pieces.UF, Pieces.UB, Pieces.DB, Pieces.DF)
+                self.resorient_middle_slice()
                 self.center_AUF_state[0] += 3
 
         self.center_AUF_state = numpy.remainder(self.center_AUF_state, 4)
+        for i in range(len(self.misoriented_centers_orientation_state)):
+            self.misoriented_centers_orientation_state[i] = self.is_lr_edge(Pieces(i)) == self.edge_orientation_state[i]
 
     def apply_move_sequence(self, moves = ""):
         for move in moves.split(" "):
-            if "U" in move:
-                if "2" in move:
-                    self.apply_move(MoveSet.U, MoveType.Double)
-                elif "'" in move:
-                    self.apply_move(MoveSet.U, MoveType.Prime)
-                else:
-                    self.apply_move(MoveSet.U, MoveType.Standard)
-            elif "M" in move:
-                if "2" in move:
-                    self.apply_move(MoveSet.M, MoveType.Double)
-                elif "'" in move:
-                    self.apply_move(MoveSet.M, MoveType.Prime)
-                else:
-                    self.apply_move(MoveSet.M, MoveType.Standard)
+            move_set = MoveSet.U if "U" in move else MoveSet.M if "M" in move else None
+            if move_set is None:
+                return
+
+            move_type = MoveType.Double if "2" in move else MoveType.Prime if "'" in move else MoveType.Standard
+            self.apply_move(move_set, move_type)
+
+    def resorient_middle_slice(self):
+        uf_index = self.edge_permutation_state[Pieces.UF]
+        ub_index = self.edge_permutation_state[Pieces.UB]
+        df_index = self.edge_permutation_state[Pieces.DF]
+        db_index = self.edge_permutation_state[Pieces.DB]
+        self.edge_orientation_state[uf_index] = not self.edge_orientation_state[uf_index]
+        self.edge_orientation_state[ub_index] = not self.edge_orientation_state[ub_index]
+        self.edge_orientation_state[df_index] = not self.edge_orientation_state[df_index]
+        self.edge_orientation_state[db_index] = not self.edge_orientation_state[db_index]
+
+    def is_lr_edge(self, piece):
+        return self.edge_permutation_state[piece] == Pieces.UL or self.edge_permutation_state[
+            piece] == Pieces.UR
 
     def is_solved(self):
-        if False in self.edge_orientation_state:
-            return False
+        return self.is_oriented() and self.is_permuted() and self.center_AUF_state[0] == 0
+
+    def is_oriented(self):
+        return not (False in self.edge_orientation_state)
+
+    def is_misoriented_centers_oriented(self):
+        return not (False in self.misoriented_centers_orientation_state)
+
+    def is_permuted(self):
         for i in range(len(self.edge_permutation_state) - 1):
             if self.edge_permutation_state[i] > self.edge_permutation_state[i + 1]:
                 return False
-        return not self.center_AUF_state.any()
+        return self.center_AUF_state[1] == 0
+
+    def is_middle_slice_oriented(self):
+        return self.center_AUF_state[0] % 2 == 0
 
 
 if __name__ == '__main__':
