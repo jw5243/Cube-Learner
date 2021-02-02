@@ -7,7 +7,7 @@ class MoveSet(Enum):
     U, M = range(2)
 
 
-class MoveType(Enum):
+class MoveType(IntEnum):
     Standard, Double, Prime = range(3)
 
 

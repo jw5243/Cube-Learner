@@ -115,10 +115,11 @@ def simulate_generation():
 def run_iteration(chromosome):
     print(chromosome)
     total_cost = 0
-    solution = Algorithm("")
-    solved = True
-    substeps_used = 0
     for i in range(scrambles_to_test):
+        solution = Algorithm("")
+        solution_substeps = []
+        solved = True
+        substeps_used = 0
         scramble = generate_random_scramble(15)
         print("Scramble: " + str(scramble.algorithm))
         solved_states = search_solutions(scramble.algorithm, 9,
@@ -129,6 +130,7 @@ def run_iteration(chromosome):
             total_cost += cost
             scramble.append_algorithm(solved_states[0][0])
             solution.append_algorithm(solved_states[0][0])
+            solution_substeps.append(solved_states[0][0])
         solved_states = search_solutions(scramble.algorithm, 9,
                                          lambda state: check_substep_criteria(chromosome, 2, state), debug = False)
         cost = get_cost(solved_states)
@@ -137,22 +139,24 @@ def run_iteration(chromosome):
             total_cost += cost
             scramble.append_algorithm(solved_states[0][0])
             solution.append_algorithm(solved_states[0][0])
+            solution_substeps.append(solved_states[0][0])
         solved_states = search_solutions(scramble.algorithm, 9, lambda state: state == SOLVED_STATE, debug = False)
         cost = get_cost(solved_states)
         if len(solved_states) != 0 and substeps_used > 0:
             total_cost += cost
             scramble.append_algorithm(solved_states[0][0])
             solution.append_algorithm(solved_states[0][0])
+            solution_substeps.append(solved_states[0][0])
         else:
             total_cost += max_cost
             solved = False
 
         if solved:
-            print("Solution: " + str(solution))
+            #print("Solution: " + str(solution))
+            for substep in solution_substeps:
+                print(substep)
         else:
             print("Failed to find solution")
-        solved = True
-        substeps_used = 0
     costs.append(total_cost)
     print(costs)
 
