@@ -23,17 +23,19 @@ def convert_move_to_string(move, move_type):
 class LSE_State(object):
     def __init__(self, lse_state = None):
         if lse_state is None:
+            # Orientation of the piece itself (index 2 = UL edge)
             self.edge_orientation_state = [True for i in range(len(Pieces))]
+            # Each number determines which edge is at which location (2 at the 0th index means UL is at UR)
             self.edge_permutation_state = numpy.arange(len(Pieces), dtype = int)
+            # U or M increases the value by 1, and prime by 3, etc., mod 4
             self.center_AUF_state = numpy.zeros(2, dtype = int)
-
+            # Orientation of the piece itself (index 2 = UL edge)
             self.misoriented_centers_orientation_state = [True for i in range(len(Pieces))]
         else:
             self.edge_orientation_state = deepcopy(lse_state.edge_orientation_state)
             self.edge_permutation_state = deepcopy(lse_state.edge_permutation_state)
             self.center_AUF_state = deepcopy(lse_state.center_AUF_state)
-
-            self.misoriented_centers_orientation_state = [True for i in range(len(Pieces))]
+            self.misoriented_centers_orientation_state = deepcopy(lse_state.center_AUF_state)
 
     def __str__(self):
         data = str(self.edge_orientation_state) + "\n" + str(self.center_AUF_state) + "\nOld: UR UF UL UB DF DB\nNew: "
@@ -97,7 +99,7 @@ class LSE_State(object):
                 self.swap_pieces_permutation(Pieces.UF, Pieces.DB)
                 self.swap_pieces_permutation(Pieces.UB, Pieces.DF)
                 self.center_AUF_state[0] += 2
-            else:
+            elif move_type == MoveType.Prime:
                 '''
                 1) Swap UF and UB
                 2) Swap UF and DB
@@ -154,6 +156,6 @@ class LSE_State(object):
 
 if __name__ == '__main__':
     state = LSE_State()
-    state.apply_move_sequence("U M M' U'")
+    state.apply_move_sequence("M U2 M' U2")
     print(state)
     print(state.is_solved())
