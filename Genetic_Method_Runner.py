@@ -11,8 +11,8 @@ center_count = 1
 auf_count = 1
 center_auf_max = 4
 
-max_generations = 10
-population_size = 5
+max_generations = 1#10
+population_size = 2
 elitism_count = 2
 crossover_probability = 0.9
 mutation_probability = 0.1
@@ -115,22 +115,46 @@ def simulate_generation():
 def run_iteration(chromosome):
     print(chromosome)
     total_cost = 0
+    solution = Algorithm("")
+    solved = True
+    substeps_used = 0
     for i in range(scrambles_to_test):
-        solved_states = search_solutions(generate_random_scramble(10).algorithm, 9,
-                                         lambda state: check_substep_criteria(population[i], 1, state), debug = True)
+        scramble = generate_random_scramble(15)
+        print("Scramble: " + str(scramble.algorithm))
+        solved_states = search_solutions(scramble.algorithm, 9,
+                                         lambda state: check_substep_criteria(chromosome, 1, state), debug = False)
         cost = get_cost(solved_states)
-        print(cost)
-        total_cost += cost
-        solved_states = search_solutions(generate_random_scramble(10).algorithm, 9,
-                                         lambda state: check_substep_criteria(population[i], 2, state))
+        if len(solved_states) != 0:
+            substeps_used += 1
+            total_cost += cost
+            scramble.append_algorithm(solved_states[0][0])
+            solution.append_algorithm(solved_states[0][0])
+        solved_states = search_solutions(scramble.algorithm, 9,
+                                         lambda state: check_substep_criteria(chromosome, 2, state), debug = False)
         cost = get_cost(solved_states)
-        print(cost)
-        total_cost += cost
-        solved_states = search_solutions(generate_random_scramble(5).algorithm, 9, lambda state: state == SOLVED_STATE)
+        if len(solved_states) != 0:
+            substeps_used += 1
+            total_cost += cost
+            scramble.append_algorithm(solved_states[0][0])
+            solution.append_algorithm(solved_states[0][0])
+        solved_states = search_solutions(scramble.algorithm, 9, lambda state: state == SOLVED_STATE, debug = False)
         cost = get_cost(solved_states)
-        print(cost)
-        total_cost += cost
+        if len(solved_states) != 0 and substeps_used > 0:
+            total_cost += cost
+            scramble.append_algorithm(solved_states[0][0])
+            solution.append_algorithm(solved_states[0][0])
+        else:
+            total_cost += max_cost
+            solved = False
+
+        if solved:
+            print("Solution: " + str(solution))
+        else:
+            print("Failed to find solution")
+        solved = True
+        substeps_used = 0
     costs.append(total_cost)
+    print(costs)
 
 
 def get_cost(solved_states):
@@ -200,5 +224,3 @@ Generally, 0 means arbitrary, 1 means oriented or permuted, 2 means not oriented
 '''
 if __name__ == '__main__':
     simulate_generation()
-    simulate_generation()
-    print(population)

@@ -26,13 +26,15 @@ def get_last_move(solution):
 
 
 def search_solutions(scramble, depth, criterion, debug = False):
-    print(scramble)
+    if debug:
+        print(scramble)
     solved_states = []
     scrambled_state = LSE_State(SOLVED_STATE)
     scrambled_state.apply_move_sequence(scramble)
     if criterion(scrambled_state):
         solved_states.append([Algorithm(""), scrambled_state])
-        print("Skip!")
+        if debug:
+            print("Skip!")
     move_set_list = list(MoveSet)
     move_type_list = list(MoveType)
     previous_states = []
