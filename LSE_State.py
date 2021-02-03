@@ -119,7 +119,7 @@ class LSE_State(object):
         for i in range(len(Pieces)):
             self.misoriented_centers_orientation_state[i] = self.is_lr_edge(Pieces(i)) == self.edge_orientation_state[i]
             self.edge_orientation_state_replacement[i] = self.edge_orientation_state[self.edge_permutation_state[i]]
-            self.edge_permutation_state_in_place[self.edge_permutation_state[i]] = i
+            #self.edge_permutation_state_in_place[self.edge_permutation_state[i]] = i
 
     def apply_move_sequence(self, moves):
         for move in moves.split(" "):

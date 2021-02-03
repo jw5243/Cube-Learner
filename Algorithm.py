@@ -76,15 +76,19 @@ class Algorithm(object):
         self.algorithm_inverted = self.invert_algorithm()
 
     def get_move(self, index):
-        if index >= 0:
-            move = self.algorithm.split(" ")[index]
-            return [MoveSet.U if "U" in move else MoveSet.M,
-                    MoveType.Double if "2" in move else MoveType.Prime if "'" in move else MoveType.Standard]
-        return [None, None]
+        #if index >= 0:
+        move = self.algorithm.split(" ")[index]
+        return [MoveSet.U if "U" in move else MoveSet.M,
+                MoveType.Double if "2" in move else MoveType.Prime if "'" in move else MoveType.Standard]
+        #return [None, None]
 
 
 if __name__ == '__main__':
-    algorithm = Algorithm("M2 U M")
-    algorithm2 = Algorithm("M' U M")
+    algorithm = Algorithm("M' U' M' U' M' U M")
+    algorithm2 = Algorithm("M2 U'")
+    algorithm3 = Algorithm("U M2 U2 M2 U' M2")
+    print(algorithm)
     algorithm.append_algorithm(algorithm2)
+    print(algorithm)
+    algorithm.append_algorithm(algorithm3)
     print(algorithm)
