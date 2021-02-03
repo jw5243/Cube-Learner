@@ -31,12 +31,16 @@ scrambles_to_test = 10
 
 def generate_chromosome():
     chromosome = []
-    for i in range((method_substeps - 1) * (orientation_count - 1)):#(2 * (orientation_count - 1))):
+    for i in range((method_substeps - 1) * (2 * (orientation_count - 1))):
         chromosome.append(get_random_tune_value(2))
-    for i in range((method_substeps - 1) * (orientation_count - 1)):#(2 * (permutation_count - 1))):
+    for i in range((method_substeps - 1) * (2 * (permutation_count - 1))):
         chromosome.append(get_random_tune_value(2))
     for i in range((method_substeps - 1) * (center_count + auf_count)):
-        chromosome.append(get_random_tune_value(center_auf_max - 1))
+        chromosome.append(get_random_tune_value(center_auf_max - 1 + 1))
+
+    chromosome = [0, 0, 0, 0, 0, 2, 2, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0,
+                  6, 5, 6, 5]
 
     return numpy.array(chromosome, dtype = int)
 
@@ -123,7 +127,7 @@ def run_iteration(chromosome):
         scramble = generate_random_scramble(15)
         print("Scramble: " + str(scramble.algorithm))
         solved_states = search_solutions(scramble.algorithm, 9,
-                                         lambda state: check_substep_criteria(chromosome, 1, state), debug = False)
+                                         lambda state: check_substep_criteria(chromosome, 1, state), max_solutions = 1, debug = False)
         cost = get_cost(solved_states)
         if len(solved_states) != 0:
             substeps_used += 1
@@ -132,7 +136,7 @@ def run_iteration(chromosome):
             solution.append_algorithm(solved_states[0][0])
             solution_substeps.append(solved_states[0][0])
         solved_states = search_solutions(scramble.algorithm, 9,
-                                         lambda state: check_substep_criteria(chromosome, 2, state), debug = False)
+                                         lambda state: check_substep_criteria(chromosome, 2, state), max_solutions = 1, debug = False)
         cost = get_cost(solved_states)
         if len(solved_states) != 0:
             substeps_used += 1
@@ -140,7 +144,7 @@ def run_iteration(chromosome):
             scramble.append_algorithm(solved_states[0][0])
             solution.append_algorithm(solved_states[0][0])
             solution_substeps.append(solved_states[0][0])
-        solved_states = search_solutions(scramble.algorithm, 9, lambda state: state == SOLVED_STATE, debug = False)
+        solved_states = search_solutions(scramble.algorithm, 9, lambda state: state == SOLVED_STATE, max_solutions = 1, debug = False)
         cost = get_cost(solved_states)
         if len(solved_states) != 0 and substeps_used > 0:
             total_cost += cost
@@ -153,8 +157,8 @@ def run_iteration(chromosome):
 
         if solved:
             #print("Solution: " + str(solution))
-            for substep in solution_substeps:
-                print(substep)
+            for i in range(len(solution_substeps)):
+                print("Step " + str(i) + ": " + str(solution_substeps[i]))
         else:
             print("Failed to find solution")
     costs.append(total_cost)
@@ -177,38 +181,74 @@ def check_substep_criteria(chromosome, substep, state):
             elif chromosome[i] == 2:
                 if state.edge_orientation_state[i]:
                     return False
-        for j in range(2 * (orientation_count - 1), 2 * (orientation_count - 1) + permutation_count - 1):
+        for i in range(orientation_count - 1, 2 * (orientation_count - 1)):
+            if chromosome[i] == 1:
+                if not state.edge_orientation_state_replacement[i - (orientation_count - 1)]:
+                    return False
+            elif chromosome[i] == 2:
+                if state.edge_orientation_state_replacement[i - (orientation_count - 1)]:
+                    return False
+        for j in range(4 * (orientation_count - 1), 4 * (orientation_count - 1) + permutation_count - 1):
             if chromosome[j] == 1:
-                if not state.edge_permutation_state[j - 2 * (orientation_count - 1)] == j - 2 * (orientation_count - 1):
+                if not state.edge_permutation_state[j - 4 * (orientation_count - 1)] == j - 4 * (orientation_count - 1):
                     return False
             elif chromosome[j] == 2:
-                if state.edge_permutation_state[j - 2 * (orientation_count - 1)] == j - 2 * (orientation_count - 1):
+                if state.edge_permutation_state[j - 4 * (orientation_count - 1)] == j - 4 * (orientation_count - 1):
+                    return False
+        for j in range(4 * (orientation_count - 1) + permutation_count - 1, 4 * (orientation_count - 1) + 2 * (permutation_count - 1)):
+            if chromosome[j] == 1:
+                if not state.edge_permutation_state_in_place[j - (4 * (orientation_count - 1) + permutation_count - 1)] == 4 * (orientation_count - 1) + permutation_count - 1:
+                    return False
+            elif chromosome[j] == 2:
+                if state.edge_permutation_state_in_place[j - (4 * (orientation_count - 1) + permutation_count - 1)] == 4 * (orientation_count - 1) + permutation_count - 1:
                     return False
         if chromosome[-4] < 4:
             if state.center_AUF_state[0] != chromosome[-4]:
+                return False
+        elif chromosome[-4] == 6:
+            if not state.is_middle_slice_oriented:
                 return False
         if chromosome[-3] < 4:
             if state.center_AUF_state[1] != chromosome[-3]:
                 return False
     elif substep == 2:
-        for i in range(orientation_count - 1, 2 * (orientation_count - 1)):
+        for i in range(2 * (orientation_count - 1), 3 * (orientation_count - 1)):
             if chromosome[i] == 1:
-                if not state.edge_orientation_state[i - (orientation_count - 1)]:
+                if not state.edge_orientation_state[i - 2 * (orientation_count - 1)]:
                     return False
             elif chromosome[i] == 2:
-                if state.edge_orientation_state[i - (orientation_count - 1)]:
+                if state.edge_orientation_state[i - 2 * (orientation_count - 1)]:
                     return False
-        for j in range(2 * (orientation_count - 1) + permutation_count - 1, 2 * (orientation_count - 1) + 2 * (permutation_count - 1)):
+        for i in range(3 * (orientation_count - 1), 4 * (orientation_count - 1)):
+            if chromosome[i] == 1:
+                if not state.edge_orientation_state_replacement[i - 3 * (orientation_count - 1)]:
+                    return False
+            elif chromosome[i] == 2:
+                if state.edge_orientation_state_replacement[i - 3 * (orientation_count - 1)]:
+                    return False
+        for j in range(4 * (orientation_count - 1) + 2 * (permutation_count - 1), 4 * (orientation_count - 1) + 3 * (permutation_count - 1)):
             if chromosome[j] == 1:
-                if not state.edge_permutation_state[j - 2 * (orientation_count - 1) - permutation_count - 1] == \
-                       2 * (orientation_count - 1) + permutation_count - 1:
+                if not state.edge_permutation_state[j - (4 * (orientation_count - 1) + 2 * (permutation_count - 1))] == \
+                       4 * (orientation_count - 1) + 2 * (permutation_count - 1):
                     return False
             elif chromosome[j] == 2:
-                if state.edge_permutation_state[j - 2 * (orientation_count - 1) - permutation_count - 1] == \
-                       2 * (orientation_count - 1) + permutation_count - 1:
+                if state.edge_permutation_state[j - (4 * (orientation_count - 1) + 2 * (permutation_count - 1))] == \
+                       4 * (orientation_count - 1) + 2 * (permutation_count - 1):
                     return False
+        '''for j in range(4 * (orientation_count - 1) + 3 * (permutation_count - 1), 4 * (orientation_count - 1) + 4 * (permutation_count - 1)):
+            if chromosome[j] == 1:
+                if not state.edge_permutation_state_in_place[j - (4 * (orientation_count - 1) + 3 * (permutation_count - 1))] == \
+                       4 * (orientation_count - 1) + 3 * (permutation_count - 1):
+                    return False
+            elif chromosome[j] == 2:
+                if state.edge_permutation_state_in_place[j - (4 * (orientation_count - 1) + 3 * (permutation_count - 1))] == \
+                       4 * (orientation_count - 1) + 3 * (permutation_count - 1):
+                    return False'''
         if chromosome[-2] < 4:
             if state.center_AUF_state[0] != chromosome[-2]:
+                return False
+        elif chromosome[-2] == 6:
+            if not state.is_middle_slice_oriented:
                 return False
         if chromosome[-1] < 4:
             if state.center_AUF_state[1] != chromosome[-1]:
@@ -224,7 +264,15 @@ The genetic sequence is a list of ((6 - 1) * (2 + 2 + 1) + 2) * 2 = 54 numbers
 4) The + 2 comes from the center offset and AUF
 5) The ) * 2 comes from this being a 3-step process (last step is to solve the rest)
 
-Generally, 0 means arbitrary, 1 means oriented or permuted, 2 means not oriented or not permuted
+Generally, 0 means arbitrary, 1 means oriented or permuted, 2 means not oriented or not permuted (5 means does not matter and 6 means oriented)
+
+[0 0 0 0 0 1 1 1 1 1 2 2 2 2 2 1 1 1 1 1
+ 0 0 0 0 0 1 1 1 1 1 2 2 2 2 2 1 1 1 1 1
+ 5 5 0 0]
+ 
+The first 5 numbers represent the edge orientation (in place), the next 5 the edge orientation (replacement),
+with the rest of the 10 numbers the same thing for the second substep. Starting with the next row, the first 5 numbers
+represent the edge permutation (replacement), and the next 5 the edge permutation (in place)
 '''
 if __name__ == '__main__':
     simulate_generation()

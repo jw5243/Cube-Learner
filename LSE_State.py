@@ -23,7 +23,7 @@ def convert_move_to_string(move, move_type):
 class LSE_State(object):
     def __init__(self, lse_state = None):
         if lse_state is None:
-            # Orientation of the piece itself (index 2 = UL edge)
+            # Orientation of the piece itself (index 2 = UL edge is oriented if True)
             self.edge_orientation_state = [True for i in range(len(Pieces))]
             # Each number determines which edge is at which location (2 at the 0th index means UL is at UR)
             self.edge_permutation_state = numpy.arange(len(Pieces), dtype = int)
@@ -31,11 +31,17 @@ class LSE_State(object):
             self.center_AUF_state = numpy.zeros(2, dtype = int)
             # Orientation of the piece itself (index 2 = UL edge)
             self.misoriented_centers_orientation_state = [True for i in range(len(Pieces))]
+            # Orientation of the piece at the location (False at the 0th index means the edge at UR is misoriented)
+            self.edge_orientation_state_replacement = [True for i in range(len(Pieces))]
+            # The corresponding edge based on index has a number which is where it is (2 at the 0th index means UR is at UL)
+            self.edge_permutation_state_in_place = numpy.arange(len(Pieces), dtype = int)
         else:
             self.edge_orientation_state = deepcopy(lse_state.edge_orientation_state)
             self.edge_permutation_state = deepcopy(lse_state.edge_permutation_state)
             self.center_AUF_state = deepcopy(lse_state.center_AUF_state)
-            self.misoriented_centers_orientation_state = deepcopy(lse_state.center_AUF_state)
+            self.misoriented_centers_orientation_state = deepcopy(lse_state.misoriented_centers_orientation_state)
+            self.edge_orientation_state_replacement = deepcopy(lse_state.edge_orientation_state_replacement)
+            self.edge_permutation_state_in_place = deepcopy(lse_state.edge_permutation_state_in_place)
 
     def __str__(self):
         data = str(self.edge_orientation_state) + "\n" + str(self.center_AUF_state) + "\nOld: UR UF UL UB DF DB\nNew: "
@@ -89,7 +95,7 @@ class LSE_State(object):
                 3) Swap UF and UB
                 '''
                 self.cycle_pieces_permutation(Pieces.UF, Pieces.DF, Pieces.DB, Pieces.UB)
-                self.resorient_middle_slice()
+                self.reorient_middle_slice()
                 self.center_AUF_state[0] += 1
             elif move_type == MoveType.Double:
                 '''
@@ -106,12 +112,14 @@ class LSE_State(object):
                 3) Swap UF and DF
                 '''
                 self.cycle_pieces_permutation(Pieces.UF, Pieces.UB, Pieces.DB, Pieces.DF)
-                self.resorient_middle_slice()
+                self.reorient_middle_slice()
                 self.center_AUF_state[0] += 3
 
         self.center_AUF_state = numpy.remainder(self.center_AUF_state, 4)
-        for i in range(len(self.misoriented_centers_orientation_state)):
+        for i in range(len(Pieces)):
             self.misoriented_centers_orientation_state[i] = self.is_lr_edge(Pieces(i)) == self.edge_orientation_state[i]
+            self.edge_orientation_state_replacement[i] = self.edge_orientation_state[self.edge_permutation_state[i]]
+            self.edge_permutation_state_in_place[self.edge_permutation_state[i]] = i
 
     def apply_move_sequence(self, moves):
         for move in moves.split(" "):
@@ -122,7 +130,7 @@ class LSE_State(object):
             move_type = MoveType.Double if "2" in move else MoveType.Prime if "'" in move else MoveType.Standard
             self.apply_move(move_set, move_type)
 
-    def resorient_middle_slice(self):
+    def reorient_middle_slice(self):
         uf_index = self.edge_permutation_state[Pieces.UF]
         ub_index = self.edge_permutation_state[Pieces.UB]
         df_index = self.edge_permutation_state[Pieces.DF]
@@ -156,6 +164,7 @@ class LSE_State(object):
 
 if __name__ == '__main__':
     state = LSE_State()
-    state.apply_move_sequence("M U2 M' U2")
+    state.apply_move_sequence("U")
     print(state)
+    print(state.edge_permutation_state_in_place)
     print(state.is_solved())

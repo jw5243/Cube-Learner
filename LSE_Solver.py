@@ -25,7 +25,7 @@ def get_last_move(solution):
             MoveType.Double if "2" in move else MoveType.Prime if "'" in move else MoveType.Standard]
 
 
-def search_solutions(scramble, depth, criterion, debug = False):
+def search_solutions(scramble, depth, criterion, max_solutions = 10000, debug = False):
     if debug:
         print(scramble)
     solved_states = []
@@ -52,6 +52,8 @@ def search_solutions(scramble, depth, criterion, debug = False):
                         solved_states.append([Algorithm(convert_move_to_string(move, move_type)), current_state])
                         if debug:
                             print(states[-1][0])
+                        if len(solved_states) > max_solutions:
+                            return solved_states
         else:
             for previous_state in previous_states:
                 for move_type in move_type_list:
@@ -63,6 +65,8 @@ def search_solutions(scramble, depth, criterion, debug = False):
                         solved_states.append([Algorithm(previous_state[0] + " " + convert_move_to_string(move, move_type)), current_state])
                         if debug:
                             print(states[-1][0])
+                        if len(solved_states) > max_solutions:
+                            return solved_states
         previous_states = states
         states = []
     return solved_states
