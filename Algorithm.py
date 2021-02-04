@@ -39,9 +39,21 @@ class Algorithm(object):
         return inverted_algorithm
 
     def append_algorithm(self, algorithm):
+        if algorithm.move_count == 0:
+            return
+        if self.move_count == 0:
+            self.algorithm = algorithm.algorithm
+            self.algorithm_by_moves = algorithm.algorithm.split(" ")
+            self.inverted_algorithm_by_moves = copy.deepcopy(self.algorithm_by_moves)
+            self.inverted_algorithm_by_moves.reverse()
+            self.move_count = len(self.algorithm_by_moves) if algorithm != "" else 0
+            self.algorithm_inverted = self.invert_algorithm()
+            return
         join_amount = 0
         joining_move1 = self.get_move(-1)
         joining_move2 = algorithm.get_move(0)
+        print("In algorithm: " + str(self))
+        print("In algorithm: " + str(algorithm))
         combined = False
         while joining_move1[0] == joining_move2[0]:
             combined = True
@@ -65,10 +77,7 @@ class Algorithm(object):
                         self.algorithm += " "
                 break
         if not combined:
-            if self.move_count > 0:
-                self.algorithm += " " + algorithm.algorithm
-            else:
-                self.algorithm += algorithm.algorithm
+            self.algorithm += algorithm.algorithm
             self.algorithm_by_moves.extend(algorithm.algorithm_by_moves)
         self.inverted_algorithm_by_moves = copy.deepcopy(self.algorithm_by_moves)
         self.inverted_algorithm_by_moves.reverse()
@@ -76,11 +85,12 @@ class Algorithm(object):
         self.algorithm_inverted = self.invert_algorithm()
 
     def get_move(self, index):
-        #if index >= 0:
+        split_algorithm = self.algorithm.split(" ")
+        #if index >= len(split_algorithm) or index < -len(split_algorithm):
+        #    return [None, None]
         move = self.algorithm.split(" ")[index]
         return [MoveSet.U if "U" in move else MoveSet.M,
                 MoveType.Double if "2" in move else MoveType.Prime if "'" in move else MoveType.Standard]
-        #return [None, None]
 
 
 if __name__ == '__main__':

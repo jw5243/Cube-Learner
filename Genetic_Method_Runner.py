@@ -11,9 +11,9 @@ center_count = 1
 auf_count = 1
 center_auf_max = 4
 
-max_generations = 1#10
-population_size = 2
-elitism_count = 2
+max_generations = 10
+population_size = 3#10
+elitism_count = 1#2
 crossover_probability = 0.9
 mutation_probability = 0.1
 
@@ -26,47 +26,33 @@ population = []
 next_population = []
 costs = []
 
-scrambles_to_test = 10
+scrambles_to_test = 1#10
 
 
 def generate_chromosome():
     chromosome = []
-    '''for i in range((method_substeps - 1) * (2 * (orientation_count - 1))):
-        chromosome.append(get_random_tune_value(2))
-    #for i in range((method_substeps - 1) * (2 * (permutation_count - 1))):
-    #    chromosome.append(get_random_tune_value(2))
-    for i in range(method_substeps - 1):
-        permutation = numpy.random.permutation(5)
-        genome_sequence = []
-        for j in range(permutation_count - 1):
-            random_value = get_random_tune_value(6)
-            if random_value == 6:
-                genome_sequence.append(random_value)
-            else:
-                genome_sequence.append(permutation[j])
-        chromosome.extend(genome_sequence)
-    for i in range((method_substeps - 1) * (center_count + auf_count)):
-        chromosome.append(get_random_tune_value(center_auf_max - 1 + 1))'''
     permutations = []
     for i in range(method_substeps - 1):
         permutation = numpy.random.permutation(6)
         genome_sequence = []
         for j in range(permutation_count):
             random_value = random.randint(0, 9)
-            genome_sequence.append(random_value if random_value == 6 else permutation[j])
+            genome_sequence.append(random_value if random_value >= 6 else permutation[j])
         permutations.extend(genome_sequence)
-    print(permutations)
     for i in range(chromosome_length):
-        if i < (method_substeps - 1) * (2 * (orientation_count - 1)) or i >= (method_substeps - 1) * (2 * (orientation_count - 1) + permutation_count):
+        if i < (method_substeps - 1) * (2 * (orientation_count - 1)) or \
+                i >= (method_substeps - 1) * (2 * (orientation_count - 1) + permutation_count):
             gene = get_random_tune_value(i)
         else:
             gene = permutations[0]
             permutations = permutations[1:]
         chromosome.append(gene)
 
-    chromosome = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                  9, 9, 9, 9, 6, 6, 0, 9, 2, 9, 9, 9,
-                  6, 5, 6, 5]
+    #print(numpy.array(chromosome, dtype = int))
+
+    #chromosome = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    #              9, 9, 9, 9, 6, 6, 0, 9, 2, 9, 9, 9,
+    #              5, 4, 5, 4]
 
     return numpy.array(chromosome, dtype = int)
 
@@ -82,11 +68,12 @@ def crosover(index1, index2):
 
 def mutation(current_index):
     index = get_random_gene_index()
-    print("Mutating chromosome " + str(current_index) + " at index " + str(index))
+    random_value = get_random_tune_value(index, population[current_index])
+    while random_value == population[current_index][index]:
+        random_value = get_random_tune_value(index, population[current_index])
+    print("Mutating chromosome " + str(current_index) + " at index " + str(index) + " from " + str(population[current_index][index]) + " to " + str(random_value))
     next_population.append(copy.deepcopy(population[current_index]))
-    #TODO: Fix tune value maximum
-    next_population[-1][index] = get_random_tune_value(
-        1 if (index < chromosome_length - center_count + auf_count) else center_auf_max - 1)
+    next_population[-1][index] = random_value
 
 
 def get_random_gene_index():
@@ -106,21 +93,42 @@ def get_random_chromosome_index():
     return chromosome_length - 1
 
 
-def get_random_tune_value(index):#max_value):
+def get_random_tune_value(index, chromosome = None):#max_value):
     #return random.randint(0, max_value)
     if index < (method_substeps - 1) * (2 * (orientation_count - 1)):
         return random.randint(0, 2)
     elif index < (method_substeps - 1) * (2 * (orientation_count - 1) + permutation_count - 1):
-        return random.randint(0, 9)
+        random_value = random.randint(0, 9)
+        if chromosome is not None:
+            i = int(index - (method_substeps - 1) * (2 * (orientation_count - 1)) / (permutation_count - 1))
+            genome_sequence = chromosome[(method_substeps - 1) * (2 * (orientation_count - 1)) +
+                                         i * (permutation_count - 1):(method_substeps - 1) * (2 * (orientation_count - 1)) +
+                                                                     (i + 1) * (permutation_count - 1)]
+            while random_value not in genome_sequence and random_value < 6:
+                random_value = random.randint(0, 9)
+            return random_value
+        return random_value
     else:
-        return random.randint(0, center_auf_max)
+        return random.randint(0, center_auf_max + 1)
+
+
+def simulate_generations(generations):
+    for i in range(generations):
+        simulate_generation()
+        data = open("Genetic_Data.txt", "w")
+        for j in range(len(population)):
+            string = ""
+            for k in range(chromosome_length):
+                string += str(population[j][k]) + ","
+            string += str(costs[j]) + "\n"
+            data.write(string)
+
 
 def simulate_generation():
     global population, next_population, current_generation, costs
     if current_generation == 1:
         for i in range(population_size):
             population.append(generate_chromosome())
-            costs.append(max_cost)
     else:
         k = elitism_count
         sorted_population = [x for _, x in sorted(zip(costs, population), key = lambda pair: pair[0])]
@@ -130,7 +138,7 @@ def simulate_generation():
 
         while k < population_size:
             generation_transition_type = random.random()
-            if generation_transition_type <= crossover_probability and k < population_size - 2:
+            if generation_transition_type <= crossover_probability and k <= population_size - 2:
                 index1 = get_random_chromosome_index()
                 index2 = get_random_chromosome_index()
                 while index1 == index2:
@@ -141,6 +149,8 @@ def simulate_generation():
                 index = get_random_chromosome_index()
                 mutation(index)
             k += 1
+        #print(population)
+        #print(next_population)
         population = next_population
     costs = []
     for chromosome in population:
@@ -194,7 +204,7 @@ def run_iteration(chromosome):
         else:
             print("Failed to find solution")
     costs.append(total_cost)
-    print(costs)
+    print("Cost incurred: " + str(total_cost))
 
 
 def get_cost(solved_states):
@@ -237,7 +247,7 @@ def check_substep_criteria(chromosome, substep, state):
         if chromosome[-4] < 4:
             if state.center_AUF_state[0] != chromosome[-4]:
                 return False
-        elif chromosome[-4] == 6:
+        elif chromosome[-4] == 5:
             if not state.is_middle_slice_oriented():
                 return False
         if chromosome[-3] < 4:
@@ -275,7 +285,7 @@ def check_substep_criteria(chromosome, substep, state):
         if chromosome[-2] < 4:
             if state.center_AUF_state[0] != chromosome[-2]:
                 return False
-        elif chromosome[-2] == 6:
+        elif chromosome[-2] == 5:
             if not state.is_middle_slice_oriented():
                 return False
         if chromosome[-1] < 4:
@@ -293,12 +303,12 @@ The genetic sequence is a list of ((6 - 1) * (2 + 2 + 1) + 2) * 2 = 54 numbers
 5) The ) * 2 comes from this being a 3-step process (last step is to solve the rest)
 
 Generally, 0 means arbitrary, 1 means oriented or permuted, 2 means not oriented or not permuted 
-5 means does not matter and 6 means oriented for center and AUF
+4 means does not matter and 5 means oriented for center and AUF
 6, 7, 8 means either UL/UR, UF/UB, DF/DB are permuted in the associated position, respectively (9 being does not matter)
 
 [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
  9, 9, 9, 9, 6, 6, 0, 9, 2, 9, 9, 9,
- 6, 5, 6, 5]
+ 5, 4, 5, 4]
  
 The first 5 numbers represent the edge orientation (in place), the next 5 the edge orientation (replacement),
 with the rest of the 10 numbers the same thing for the second substep. Starting with the next row, the first 5 numbers
@@ -307,4 +317,4 @@ represent the edge permutation (replacement), and the next 5 the edge permutatio
 This example is EOLR + 4c
 '''
 if __name__ == '__main__':
-    simulate_generation()
+    simulate_generations(max_generations)
