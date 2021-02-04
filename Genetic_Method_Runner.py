@@ -3,6 +3,7 @@ import random
 import copy
 from LSE_Solver import *
 from LSE_State import *
+from Prune_Table import *
 
 method_substeps = 3
 permutation_count = 6
@@ -29,6 +30,19 @@ costs = []
 scrambles_to_test = 1#10
 
 
+def load_saved_data():
+    global current_generation
+    saved_data = open("Genetic_Data.txt", "r")
+    data = saved_data.readlines()
+    for line in data:
+        chromosome_data = line.split(",")
+        chromosome = list(map(lambda gene: int(gene), chromosome_data[:-1]))
+        population.append(numpy.array(chromosome, dtype = int))
+        costs.append(int(chromosome_data[-1]))
+    current_generation += 1
+    print("Finished loading saved data")
+
+
 def generate_chromosome():
     chromosome = []
     permutations = []
@@ -50,9 +64,9 @@ def generate_chromosome():
 
     #print(numpy.array(chromosome, dtype = int))
 
-    #chromosome = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    #              9, 9, 9, 9, 6, 6, 0, 9, 2, 9, 9, 9,
-    #              5, 4, 5, 4]
+    chromosome = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  9, 9, 9, 9, 6, 6, 0, 9, 2, 9, 9, 9,
+                  5, 4, 5, 4]
 
     return numpy.array(chromosome, dtype = int)
 
@@ -112,20 +126,22 @@ def get_random_tune_value(index, chromosome = None):#max_value):
         return random.randint(0, center_auf_max + 1)
 
 
-def simulate_generations(generations):
+def simulate_generations(generations, save_data = False):
     for i in range(generations):
         simulate_generation()
-        data = open("Genetic_Data.txt", "w")
-        for j in range(len(population)):
-            string = ""
-            for k in range(chromosome_length):
-                string += str(population[j][k]) + ","
-            string += str(costs[j]) + "\n"
-            data.write(string)
+        if save_data:
+            data = open("Genetic_Data.txt", "w")
+            for j in range(len(population)):
+                string = ""
+                for k in range(chromosome_length):
+                    string += str(population[j][k]) + ","
+                string += str(costs[j]) + "\n"
+                data.write(string)
 
 
 def simulate_generation():
     global population, next_population, current_generation, costs
+    print("----------------------------------------------- Generation " + str(current_generation) + " -----------------------------------------------")
     if current_generation == 1:
         for i in range(population_size):
             population.append(generate_chromosome())
@@ -186,7 +202,7 @@ def run_iteration(chromosome):
             scramble.append_algorithm(solved_states[0][0])
             solution.append_algorithm(solved_states[0][0])
             solution_substeps.append(solved_states[0][0])
-        solved_states = search_solutions(scramble.algorithm, 9, lambda state: state == SOLVED_STATE, max_solutions = 1, debug = False)
+        solved_states = search_solutions(scramble.algorithm, 9, lambda state: state == SOLVED_STATE, max_solutions = 1, debug = False, use_prune_table = True)
         cost = get_cost(solved_states)
         if len(solved_states) != 0 and substeps_used > 0:
             total_cost += cost
@@ -317,4 +333,7 @@ represent the edge permutation (replacement), and the next 5 the edge permutatio
 This example is EOLR + 4c
 '''
 if __name__ == '__main__':
-    simulate_generations(max_generations)
+    prune_depth = 9
+    prune_lse_states(prune_depth)
+    #load_saved_data()
+    simulate_generations(max_generations, save_data = False)

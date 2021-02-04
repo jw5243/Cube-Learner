@@ -24,6 +24,9 @@ class Algorithm(object):
     def __str__(self):
         return "Move Count = " + str(self.move_count) + ": " + self.algorithm
 
+    def get_inverted_algorithm_object(self):
+        return Algorithm(algorithm_by_moves = self.inverted_algorithm_by_moves)
+
     def invert_algorithm(self):
         inverted_algorithm = ""
         for i in range(self.move_count):
@@ -52,12 +55,19 @@ class Algorithm(object):
         join_amount = 0
         joining_move1 = self.get_move(-1)
         joining_move2 = algorithm.get_move(0)
-        print("In algorithm: " + str(self))
-        print("In algorithm: " + str(algorithm))
         combined = False
-        while joining_move1[0] == joining_move2[0]:
+        while joining_move1[0] == joining_move2[0] and join_amount < algorithm.move_count:
             combined = True
+            if len(self.algorithm_by_moves) == 0:
+                self.algorithm_by_moves.extend(algorithm.algorithm_by_moves[join_amount:])
+                self.algorithm = ""
+                '''for i in range(len(self.algorithm_by_moves)):
+                    self.algorithm += self.algorithm_by_moves[i]
+                    if i < len(self.algorithm_by_moves) - 1:
+                        self.algorithm += " "'''
+                break
             self.algorithm_by_moves = self.algorithm_by_moves[:-1]
+            print(self.algorithm_by_moves)
             joining_move1 = self.get_move(-1 - join_amount)
             joining_move2 = algorithm.get_move(join_amount)
             move_distance = (2 + int(joining_move1[1]) + int(joining_move2[1])) % 4
@@ -71,17 +81,24 @@ class Algorithm(object):
                 self.move_count -= 1
                 self.algorithm_by_moves.extend(algorithm.algorithm_by_moves[1 + join_amount:])
                 self.algorithm = ""
-                for i in range(len(self.algorithm_by_moves)):
+                '''for i in range(len(self.algorithm_by_moves)):
                     self.algorithm += self.algorithm_by_moves[i]
                     if i < len(self.algorithm_by_moves) - 1:
-                        self.algorithm += " "
+                        self.algorithm += " "'''
                 break
-        if not combined:
-            self.algorithm += algorithm.algorithm
+        if combined:
+            self.algorithm = ""
+            for i in range(len(self.algorithm_by_moves)):
+                self.algorithm += self.algorithm_by_moves[i]
+                if i < len(self.algorithm_by_moves) - 1:
+                    self.algorithm += " "
+        else:
+            self.algorithm += (" " if self.move_count > 0 else "") + algorithm.algorithm
             self.algorithm_by_moves.extend(algorithm.algorithm_by_moves)
         self.inverted_algorithm_by_moves = copy.deepcopy(self.algorithm_by_moves)
         self.inverted_algorithm_by_moves.reverse()
-        self.move_count += algorithm.move_count
+        #self.move_count += algorithm.move_count
+        self.move_count = len(self.algorithm_by_moves)
         self.algorithm_inverted = self.invert_algorithm()
 
     def get_move(self, index):
@@ -94,11 +111,8 @@ class Algorithm(object):
 
 
 if __name__ == '__main__':
-    algorithm = Algorithm("M' U' M' U' M' U M")
-    algorithm2 = Algorithm("M2 U'")
-    algorithm3 = Algorithm("U M2 U2 M2 U' M2")
+    algorithm = Algorithm("M2 U")
+    algorithm2 = Algorithm("M2 U2")
     print(algorithm)
     algorithm.append_algorithm(algorithm2)
-    print(algorithm)
-    algorithm.append_algorithm(algorithm3)
     print(algorithm)

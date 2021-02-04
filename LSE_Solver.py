@@ -3,6 +3,7 @@ import time
 import random
 from LSE_State import *
 from Algorithm import *
+from Prune_Table import *
 
 SOLVED_STATE = LSE_State()
 
@@ -25,7 +26,8 @@ def get_last_move(solution):
             MoveType.Double if "2" in move else MoveType.Prime if "'" in move else MoveType.Standard]
 
 
-def search_solutions(scramble, depth, criterion, max_solutions = 10000, debug = False):
+#Prune table only works for solving the cube, not a specific criterion
+def search_solutions(scramble, depth, criterion, max_solutions = 10000, debug = False, use_prune_table = False):
     if debug:
         print(scramble)
     solved_states = []
@@ -35,6 +37,17 @@ def search_solutions(scramble, depth, criterion, max_solutions = 10000, debug = 
         solved_states.append([Algorithm(""), scrambled_state])
         if debug:
             print("Skip!")
+    if use_prune_table:
+        for i in range(1, len(prune_table)):
+            print("Checking prune table at depth... " + str(i))
+            for pruned_state in prune_table[i]:
+                if scrambled_state == pruned_state[1]:
+                    solved_states.append([pruned_state[0].get_inverted_algorithm_object(), pruned_state[1]])
+                    if debug:
+                        print("Pruned solution found: " + str(solved_states[-1][0]))
+                    if len(solved_states) >= max_solutions:
+                        return solved_states
+        return solved_states
     move_set_list = list(MoveSet)
     move_type_list = list(MoveType)
     previous_states = []
@@ -52,7 +65,7 @@ def search_solutions(scramble, depth, criterion, max_solutions = 10000, debug = 
                         solved_states.append([Algorithm(convert_move_to_string(move, move_type)), current_state])
                         if debug:
                             print(states[-1][0])
-                        if len(solved_states) > max_solutions:
+                        if len(solved_states) >= max_solutions:
                             return solved_states
         else:
             for previous_state in previous_states:
@@ -65,7 +78,7 @@ def search_solutions(scramble, depth, criterion, max_solutions = 10000, debug = 
                         solved_states.append([Algorithm(previous_state[0] + " " + convert_move_to_string(move, move_type)), current_state])
                         if debug:
                             print(states[-1][0])
-                        if len(solved_states) > max_solutions:
+                        if len(solved_states) >= max_solutions:
                             return solved_states
         previous_states = states
         states = []
