@@ -13,12 +13,12 @@ auf_count = 1
 center_auf_max = 4
 
 max_generations = 10
-population_size = 3#10
-elitism_count = 1#2
+population_size = 50
+elitism_count = 2
 crossover_probability = 0.9
 mutation_probability = 0.1
 
-max_cost = 5000
+max_cost = 50
 current_generation = 1
 
 chromosome_length = (method_substeps - 1) * (2 * (orientation_count - 1) + permutation_count + center_count + auf_count)
@@ -27,7 +27,7 @@ population = []
 next_population = []
 costs = []
 
-scrambles_to_test = 1#10
+scrambles_to_test = 10
 
 
 def load_saved_data():
@@ -64,9 +64,9 @@ def generate_chromosome():
 
     #print(numpy.array(chromosome, dtype = int))
 
-    chromosome = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                  9, 9, 9, 9, 6, 6, 0, 9, 2, 9, 9, 9,
-                  5, 4, 5, 4]
+    #chromosome = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    #              9, 9, 9, 9, 6, 6, 0, 9, 2, 9, 9, 9,
+    #              5, 4, 5, 4]
 
     return numpy.array(chromosome, dtype = int)
 
@@ -127,6 +127,7 @@ def get_random_tune_value(index, chromosome = None):#max_value):
 
 
 def simulate_generations(generations, save_data = False):
+    global costs
     for i in range(generations):
         simulate_generation()
         if save_data:
@@ -136,7 +137,10 @@ def simulate_generations(generations, save_data = False):
                 for k in range(chromosome_length):
                     string += str(population[j][k]) + ","
                 string += str(costs[j]) + "\n"
+                print(string[:-1])
                 data.write(string)
+            print("Saved data")
+        costs = []
 
 
 def simulate_generation():
@@ -165,19 +169,23 @@ def simulate_generation():
                 index = get_random_chromosome_index()
                 mutation(index)
             k += 1
-        #print(population)
-        #print(next_population)
         population = next_population
-    costs = []
-    for chromosome in population:
-        run_iteration(chromosome)
+    for i in range(len(population)):
+        print("--------------------- Testing chromosome " + str(i) + " ---------------------")
+        print(population[i])
+        run_iteration(population[i])
+    print("Average cost of generation " + str(current_generation) + ": " + str(sum(costs) / len(costs)))
     current_generation += 1
 
 
 def run_iteration(chromosome):
-    print(chromosome)
     total_cost = 0
+    ever_solved = False
     for i in range(scrambles_to_test):
+        # Stop looping if it is pretty much guaranteed that this chromosome will fail and incur max penalty and reset chromosome
+        if i >= 2 and not ever_solved:
+            total_cost += (scrambles_to_test - 2) * max_cost
+            break
         solution = Algorithm("")
         solution_substeps = []
         solved = True
@@ -202,9 +210,10 @@ def run_iteration(chromosome):
             scramble.append_algorithm(solved_states[0][0])
             solution.append_algorithm(solved_states[0][0])
             solution_substeps.append(solved_states[0][0])
-        solved_states = search_solutions(scramble.algorithm, 9, lambda state: state == SOLVED_STATE, max_solutions = 1, debug = False, use_prune_table = True)
+        solved_states = search_solutions(scramble.algorithm, 9, lambda state: state == SOLVED_STATE, max_solutions = 1, debug = False)
         cost = get_cost(solved_states)
         if len(solved_states) != 0 and substeps_used > 0:
+            ever_solved = True
             total_cost += cost
             scramble.append_algorithm(solved_states[0][0])
             solution.append_algorithm(solved_states[0][0])
@@ -219,6 +228,8 @@ def run_iteration(chromosome):
             print("Full Solution: " + str(solution))
         else:
             print("Failed to find solution")
+    if not ever_solved:
+        chromosome = generate_chromosome()
     costs.append(total_cost)
     print("Cost incurred: " + str(total_cost))
 
@@ -336,4 +347,4 @@ if __name__ == '__main__':
     prune_depth = 9
     prune_lse_states(prune_depth)
     #load_saved_data()
-    simulate_generations(max_generations, save_data = False)
+    simulate_generations(max_generations, save_data = True)

@@ -67,7 +67,6 @@ class Algorithm(object):
                         self.algorithm += " "'''
                 break
             self.algorithm_by_moves = self.algorithm_by_moves[:-1]
-            print(self.algorithm_by_moves)
             joining_move1 = self.get_move(-1 - join_amount)
             joining_move2 = algorithm.get_move(join_amount)
             move_distance = (2 + int(joining_move1[1]) + int(joining_move2[1])) % 4
