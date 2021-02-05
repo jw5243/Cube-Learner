@@ -38,7 +38,8 @@ def load_saved_data():
         chromosome_data = line.split(",")
         chromosome = list(map(lambda gene: int(gene), chromosome_data[:-1]))
         population.append(numpy.array(chromosome, dtype = int))
-        costs.append(int(chromosome_data[-1]))
+        costs.append(int(chromosome_data[-1].strip('\n')))
+        print(list(map(lambda gene: int(gene), chromosome_data[:-1])))
     current_generation += 1
     print("Finished loading saved data")
 
@@ -96,15 +97,16 @@ def get_random_gene_index():
 
 def get_random_chromosome_index():
     total_cost = sum(costs)
-    total_normalized_probability = sum(map(lambda cost: (total_cost - cost)**2, costs))
-    selection_probability = list(map(lambda cost: (total_cost - cost)**2 / total_normalized_probability, costs))
+    total_normalized_probability = sum(map(lambda cost: (total_cost - cost)**8, costs))
+    selection_probability = list(map(lambda cost: (total_cost - cost)**8 / total_normalized_probability, costs))
+    #print(selection_probability)
     random_value = random.random()
     current_probability_sum = 0
     for i in range(len(selection_probability)):
         if selection_probability[i] + current_probability_sum > random_value >= current_probability_sum:
             return i
         current_probability_sum += selection_probability[i]
-    return chromosome_length - 1
+    return population_size - 1
 
 
 def get_random_tune_value(index, chromosome = None):#max_value):
@@ -126,8 +128,11 @@ def get_random_tune_value(index, chromosome = None):#max_value):
         return random.randint(0, center_auf_max + 1)
 
 
-def simulate_generations(generations, save_data = False):
+def simulate_generations(generations, has_loaded_data = False, save_data = False):
     global costs
+    if not has_loaded_data:
+        for i in range(population_size):
+            costs.append(max_cost)
     for i in range(generations):
         simulate_generation()
         if save_data:
@@ -140,7 +145,8 @@ def simulate_generations(generations, save_data = False):
                 print(string[:-1])
                 data.write(string)
             print("Saved data")
-        costs = []
+            data.close()
+        #costs = []
 
 
 def simulate_generation():
@@ -173,12 +179,12 @@ def simulate_generation():
     for i in range(len(population)):
         print("--------------------- Testing chromosome " + str(i) + " ---------------------")
         print(population[i])
-        run_iteration(population[i])
+        run_iteration(population[i], i)
     print("Average cost of generation " + str(current_generation) + ": " + str(sum(costs) / len(costs)))
     current_generation += 1
 
 
-def run_iteration(chromosome):
+def run_iteration(chromosome, index):
     total_cost = 0
     ever_solved = False
     for i in range(scrambles_to_test):
@@ -212,12 +218,14 @@ def run_iteration(chromosome):
             solution_substeps.append(solved_states[0][0])
         solved_states = search_solutions(scramble.algorithm, 9, lambda state: state == SOLVED_STATE, max_solutions = 1, debug = False)
         cost = get_cost(solved_states)
-        if len(solved_states) != 0 and substeps_used > 0:
+        if len(solved_states) != 0 and substeps_used ==2:#> 0:
             ever_solved = True
             total_cost += cost
             scramble.append_algorithm(solved_states[0][0])
             solution.append_algorithm(solved_states[0][0])
             solution_substeps.append(solved_states[0][0])
+        elif substeps_used > 0:
+            total_cost += int(1.25 * max_cost / (substeps_used + 1))
         else:
             total_cost += max_cost
             solved = False
@@ -230,7 +238,7 @@ def run_iteration(chromosome):
             print("Failed to find solution")
     if not ever_solved:
         chromosome = generate_chromosome()
-    costs.append(total_cost)
+    costs[index] = total_cost
     print("Cost incurred: " + str(total_cost))
 
 
@@ -344,7 +352,7 @@ represent the edge permutation (replacement), and the next 5 the edge permutatio
 This example is EOLR + 4c
 '''
 if __name__ == '__main__':
+    load_saved_data()
     prune_depth = 9
     prune_lse_states(prune_depth)
-    #load_saved_data()
-    simulate_generations(max_generations, save_data = True)
+    simulate_generations(max_generations, has_loaded_data = True, save_data = True)
