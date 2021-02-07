@@ -1,6 +1,7 @@
 import numpy
 import random
 import copy
+import math
 from LSE_Solver import *
 from LSE_State import *
 from Prune_Table import *
@@ -32,7 +33,7 @@ scrambles_to_test = 10
 
 def load_saved_data():
     global current_generation
-    saved_data = open("Genetic_Data.txt", "r")
+    saved_data = open("Genetic_Data.csv", "r")
     data = saved_data.readlines()
     for line in data:
         chromosome_data = line.split(",")
@@ -57,7 +58,7 @@ def generate_chromosome():
     for i in range(chromosome_length):
         if i < (method_substeps - 1) * (2 * (orientation_count - 1)) or \
                 i >= (method_substeps - 1) * (2 * (orientation_count - 1) + permutation_count):
-            gene = get_random_tune_value(i)
+            gene, _ = get_random_tune_value(i)
         else:
             gene = permutations[0]
             permutations = permutations[1:]
@@ -83,12 +84,19 @@ def crosover(index1, index2):
 
 def mutation(current_index):
     index = get_random_gene_index()
-    random_value = get_random_tune_value(index, population[current_index])
+    random_value, replacement_index = get_random_tune_value(index, population[current_index], True)
     while random_value == population[current_index][index]:
-        random_value = get_random_tune_value(index, population[current_index])
-    print("Mutating chromosome " + str(current_index) + " at index " + str(index) + " from " + str(population[current_index][index]) + " to " + str(random_value))
+        random_value, replacement_index = get_random_tune_value(index, population[current_index], True)
     next_population.append(copy.deepcopy(population[current_index]))
-    next_population[-1][index] = random_value
+    if replacement_index == -1:
+        print("Mutating..... chromosome  " + str(current_index) + " at index " + str(index) + " from " + str(
+            population[current_index][index]) + " to " + str(random_value))
+        next_population[-1][index] = random_value
+    else:
+        print("Mutating..... chromosome  " + str(current_index) + " at index " + str(index) + " from " + str(
+            population[current_index][index]) + " to " + str(random_value) + " replacing " + str(
+            population[current_index][replacement_index]) + " at index " + str(replacement_index))
+        next_population[-1][index], next_population[-1][replacement_index] = next_population[-1][replacement_index], next_population[-1][index]
 
 
 def get_random_gene_index():
@@ -97,8 +105,8 @@ def get_random_gene_index():
 
 def get_random_chromosome_index():
     total_cost = sum(costs)
-    total_normalized_probability = sum(map(lambda cost: (total_cost - cost)**8, costs))
-    selection_probability = list(map(lambda cost: (total_cost - cost)**8 / total_normalized_probability, costs))
+    total_normalized_probability = sum(map(lambda cost: (math.sqrt(total_cost) - math.sqrt(cost)) ** 20, costs))
+    selection_probability = list(map(lambda cost: (math.sqrt(total_cost) - math.sqrt(cost)) ** 20 / total_normalized_probability, costs))
     #print(selection_probability)
     random_value = random.random()
     current_probability_sum = 0
@@ -109,23 +117,26 @@ def get_random_chromosome_index():
     return population_size - 1
 
 
-def get_random_tune_value(index, chromosome = None):#max_value):
+def get_random_tune_value(index, chromosome = None, repeat_values = False):#max_value):
     #return random.randint(0, max_value)
     if index < (method_substeps - 1) * (2 * (orientation_count - 1)):
-        return random.randint(0, 2)
-    elif index < (method_substeps - 1) * (2 * (orientation_count - 1) + permutation_count - 1):
+        return random.randint(0, 2), -1
+    elif index < (method_substeps - 1) * (2 * (orientation_count - 1) + permutation_count):
         random_value = random.randint(0, 9)
         if chromosome is not None:
-            i = int(index - (method_substeps - 1) * (2 * (orientation_count - 1)) / (permutation_count - 1))
+            i = int((index - (method_substeps - 1) * (2 * (orientation_count - 1))) / permutation_count)
             genome_sequence = chromosome[(method_substeps - 1) * (2 * (orientation_count - 1)) +
-                                         i * (permutation_count - 1):(method_substeps - 1) * (2 * (orientation_count - 1)) +
-                                                                     (i + 1) * (permutation_count - 1)]
-            while random_value not in genome_sequence and random_value < 6:
+                                         i * permutation_count:(method_substeps - 1) * (2 * (orientation_count - 1)) +
+                                                                     (i + 1) * permutation_count]
+            while random_value not in genome_sequence and random_value < 6 and not repeat_values:
                 random_value = random.randint(0, 9)
-            return random_value
-        return random_value
+            #print(str(genome_sequence) + "\t" + str(random_value))
+            if repeat_values and random_value in genome_sequence:
+                #print(numpy.where(genome_sequence == random_value)[0][0])
+                return random_value, numpy.where(genome_sequence == random_value)[0][0] + (method_substeps - 1) * (2 * (orientation_count - 1)) + i * permutation_count
+        return random_value, -1
     else:
-        return random.randint(0, center_auf_max + 1)
+        return random.randint(0, center_auf_max + 1), -1
 
 
 def simulate_generations(generations, has_loaded_data = False, save_data = False):
@@ -134,9 +145,14 @@ def simulate_generations(generations, has_loaded_data = False, save_data = False
         for i in range(population_size):
             costs.append(max_cost)
     for i in range(generations):
+        total_cost = sum(costs)
+        total_normalized_probability = sum(map(lambda cost: (math.sqrt(total_cost) - math.sqrt(cost)) ** 20, costs))
+        selection_probability = list(map(lambda cost: (math.sqrt(total_cost) - math.sqrt(cost)) ** 20 / total_normalized_probability, costs))
+        print(["%.3f" % prob for prob in selection_probability])
+
         simulate_generation()
         if save_data:
-            data = open("Genetic_Data.txt", "w")
+            data = open("Genetic_Data.csv", "w")
             for j in range(len(population)):
                 string = ""
                 for k in range(chromosome_length):
@@ -236,7 +252,7 @@ def run_iteration(chromosome, index):
             print("Full Solution: " + str(solution))
         else:
             print("Failed to find solution")
-    if not ever_solved:
+    if total_cost >= 500: #not ever_solved:
         chromosome = generate_chromosome()
     costs[index] = total_cost
     print("Cost incurred: " + str(total_cost))

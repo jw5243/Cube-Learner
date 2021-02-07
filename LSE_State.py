@@ -1,6 +1,8 @@
 import numpy
 from copy import deepcopy
 from enum import Enum, IntEnum
+from numba import jit, typeof
+from numba.experimental import jitclass
 
 
 class MoveSet(Enum):
@@ -20,6 +22,9 @@ def convert_move_to_string(move, move_type):
         "" if move_type == MoveType.Standard else "2" if move_type == MoveType.Double else "'")
 
 
+#@jitclass([
+#    ('lse_state', LSE_State.class_type.instance_type)
+#])
 class LSE_State(object):
     def __init__(self, lse_state = None):
         if lse_state is None:
