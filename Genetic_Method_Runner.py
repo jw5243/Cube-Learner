@@ -14,10 +14,10 @@ auf_count = 1
 center_auf_max = 4
 
 max_generations = 10
-population_size = 50
+population_size = 48#50
 elitism_count = 2
-crossover_probability = 0.9
-mutation_probability = 0.1
+crossover_probability = 0.95
+mutation_probability = 0.05
 
 max_cost = 50
 current_generation = 1
@@ -28,7 +28,7 @@ population = []
 next_population = []
 costs = []
 
-scrambles_to_test = 10
+scrambles_to_test = 5#10
 
 
 def load_saved_data():
@@ -78,25 +78,38 @@ def crosover(index1, index2):
     print("Crossing over chromosomes " + str(index1) + " and " + str(index2) + " at index " + str(crossover_index))
     next_population.append(copy.deepcopy(population[index1]))
     next_population.append(copy.deepcopy(population[index2]))
-    for i in range(crossover_index):
-        next_population[-1][i], next_population[-2][i] = next_population[-2][i], next_population[-1][i]
+    #for i in range(crossover_index):
+    #    next_population[-1][i], next_population[-2][i] = next_population[-2][i], next_population[-1][i]
+    # Uniform crossover implementation
+    for i in range(chromosome_length):
+        random_value = random.randint(0, 1)
+        if random_value == 1:
+            next_population[-1][i], next_population[-2][i] = next_population[-2][i], next_population[-1][i]
+
+
+def basic_mutation(current_index, mutation_index):
+    mutation_index = get_random_gene_index()
+    random_value, replacement_index = get_random_tune_value(mutation_index, population[current_index], True)
+    while random_value == population[current_index][mutation_index]:
+        random_value, replacement_index = get_random_tune_value(mutation_index, population[current_index], True)
+    next_population.append(copy.deepcopy(population[current_index]))
+    if replacement_index == -1:
+        print("Mutating..... chromosome  " + str(current_index) + " at index " + str(mutation_index) + " from " + str(
+            population[current_index][mutation_index]) + " to " + str(random_value))
+        next_population[-1][mutation_index] = random_value
+    else:
+        print("Mutating..... chromosome  " + str(current_index) + " at index " + str(mutation_index) + " from " + str(
+            population[current_index][mutation_index]) + " to " + str(random_value) + " replacing " + str(
+            population[current_index][replacement_index]) + " at index " + str(replacement_index))
+        next_population[-1][mutation_index], next_population[-1][replacement_index] = next_population[-1][replacement_index], next_population[-1][mutation_index]
 
 
 def mutation(current_index):
-    index = get_random_gene_index()
-    random_value, replacement_index = get_random_tune_value(index, population[current_index], True)
-    while random_value == population[current_index][index]:
-        random_value, replacement_index = get_random_tune_value(index, population[current_index], True)
-    next_population.append(copy.deepcopy(population[current_index]))
-    if replacement_index == -1:
-        print("Mutating..... chromosome  " + str(current_index) + " at index " + str(index) + " from " + str(
-            population[current_index][index]) + " to " + str(random_value))
-        next_population[-1][index] = random_value
-    else:
-        print("Mutating..... chromosome  " + str(current_index) + " at index " + str(index) + " from " + str(
-            population[current_index][index]) + " to " + str(random_value) + " replacing " + str(
-            population[current_index][replacement_index]) + " at index " + str(replacement_index))
-        next_population[-1][index], next_population[-1][replacement_index] = next_population[-1][replacement_index], next_population[-1][index]
+    mutation_chance = float(1) / chromosome_length
+    for i in range(chromosome_length):
+        random_value = random.random()
+        if random_value <= mutation_chance:
+            basic_mutation(current_index, i)
 
 
 def get_random_gene_index():
@@ -105,8 +118,8 @@ def get_random_gene_index():
 
 def get_random_chromosome_index():
     total_cost = sum(costs)
-    total_normalized_probability = sum(map(lambda cost: (math.sqrt(total_cost) - math.sqrt(cost)) ** 20, costs))
-    selection_probability = list(map(lambda cost: (math.sqrt(total_cost) - math.sqrt(cost)) ** 20 / total_normalized_probability, costs))
+    total_normalized_probability = sum(map(lambda cost: (math.sqrt(total_cost) - math.sqrt(cost)) ** 6, costs))
+    selection_probability = list(map(lambda cost: (math.sqrt(total_cost) - math.sqrt(cost)) ** 6 / total_normalized_probability, costs))
     #print(selection_probability)
     random_value = random.random()
     current_probability_sum = 0
@@ -146,8 +159,8 @@ def simulate_generations(generations, has_loaded_data = False, save_data = False
             costs.append(max_cost)
     for i in range(generations):
         total_cost = sum(costs)
-        total_normalized_probability = sum(map(lambda cost: (math.sqrt(total_cost) - math.sqrt(cost)) ** 20, costs))
-        selection_probability = list(map(lambda cost: (math.sqrt(total_cost) - math.sqrt(cost)) ** 20 / total_normalized_probability, costs))
+        total_normalized_probability = sum(map(lambda cost: (math.sqrt(total_cost) - math.sqrt(cost)) ** 6, costs))
+        selection_probability = list(map(lambda cost: (math.sqrt(total_cost) - math.sqrt(cost)) ** 6 / total_normalized_probability, costs))
         print(["%.3f" % prob for prob in selection_probability])
 
         simulate_generation()
@@ -162,7 +175,10 @@ def simulate_generations(generations, has_loaded_data = False, save_data = False
                 data.write(string)
             print("Saved data")
             data.close()
-        #costs = []
+
+            cost_data = open("Cost_Data.csv", "a")
+            cost_data.write(str(sum(costs) / len(costs)) + "\n")
+            cost_data.close()
 
 
 def simulate_generation():
@@ -192,7 +208,7 @@ def simulate_generation():
                 mutation(index)
             k += 1
         population = next_population
-    for i in range(len(population)):
+    for i in range(population_size):
         print("--------------------- Testing chromosome " + str(i) + " ---------------------")
         print(population[i])
         run_iteration(population[i], i)
@@ -205,8 +221,8 @@ def run_iteration(chromosome, index):
     ever_solved = False
     for i in range(scrambles_to_test):
         # Stop looping if it is pretty much guaranteed that this chromosome will fail and incur max penalty and reset chromosome
-        if i >= 2 and not ever_solved:
-            total_cost += (scrambles_to_test - 2) * max_cost
+        if i >= 3 and not ever_solved:
+            total_cost += (scrambles_to_test - 3) * max_cost
             break
         solution = Algorithm("")
         solution_substeps = []
@@ -223,23 +239,27 @@ def run_iteration(chromosome, index):
             scramble.append_algorithm(solved_states[0][0])
             solution.append_algorithm(solved_states[0][0])
             solution_substeps.append(solved_states[0][0])
-        solved_states = search_solutions(scramble.algorithm, 9,
-                                         lambda state: check_substep_criteria(chromosome, 2, state), max_solutions = 1, debug = False)
-        cost = get_cost(solved_states)
-        if len(solved_states) != 0:
-            substeps_used += 1
-            total_cost += cost
-            scramble.append_algorithm(solved_states[0][0])
-            solution.append_algorithm(solved_states[0][0])
-            solution_substeps.append(solved_states[0][0])
-        solved_states = search_solutions(scramble.algorithm, 9, lambda state: state == SOLVED_STATE, max_solutions = 1, debug = False)
-        cost = get_cost(solved_states)
-        if len(solved_states) != 0 and substeps_used ==2:#> 0:
-            ever_solved = True
-            total_cost += cost
-            scramble.append_algorithm(solved_states[0][0])
-            solution.append_algorithm(solved_states[0][0])
-            solution_substeps.append(solved_states[0][0])
+        if substeps_used == 1:
+            solved_states = search_solutions(scramble.algorithm, 9,
+                                             lambda state: check_substep_criteria(chromosome, 2, state), max_solutions = 1, debug = False)
+            cost = get_cost(solved_states)
+            if len(solved_states) != 0:
+                substeps_used += 1
+                total_cost += cost
+                scramble.append_algorithm(solved_states[0][0])
+                solution.append_algorithm(solved_states[0][0])
+                solution_substeps.append(solved_states[0][0])
+        if substeps_used == 2:
+            solved_states = search_solutions(scramble.algorithm, 9, lambda state: state == SOLVED_STATE, max_solutions = 1, debug = False)
+            cost = get_cost(solved_states)
+            if len(solved_states) != 0: #and substeps_used == 2:#> 0:
+                ever_solved = True
+                total_cost += cost
+                scramble.append_algorithm(solved_states[0][0])
+                solution.append_algorithm(solved_states[0][0])
+                solution_substeps.append(solved_states[0][0])
+            else:
+                total_cost += int(1.25 * max_cost / 3)
         elif substeps_used > 0:
             total_cost += int(1.25 * max_cost / (substeps_used + 1))
         else:
@@ -252,8 +272,9 @@ def run_iteration(chromosome, index):
             print("Full Solution: " + str(solution))
         else:
             print("Failed to find solution")
-    if total_cost >= 500: #not ever_solved:
+    if total_cost >= max_cost * scrambles_to_test: #not ever_solved:
         chromosome = generate_chromosome()
+        print("Resetting chromosome")
     costs[index] = total_cost
     print("Cost incurred: " + str(total_cost))
 
@@ -369,6 +390,6 @@ This example is EOLR + 4c
 '''
 if __name__ == '__main__':
     load_saved_data()
-    prune_depth = 9
+    prune_depth = 10
     prune_lse_states(prune_depth)
     simulate_generations(max_generations, has_loaded_data = True, save_data = True)

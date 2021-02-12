@@ -1,7 +1,7 @@
 import numpy
 from copy import deepcopy
 from enum import Enum, IntEnum
-from numba import jit, typeof
+from numba import jit, typeof, deferred_type
 from numba.experimental import jitclass
 
 
@@ -22,9 +22,31 @@ def convert_move_to_string(move, move_type):
         "" if move_type == MoveType.Standard else "2" if move_type == MoveType.Double else "'")
 
 
-#@jitclass([
-#    ('lse_state', LSE_State.class_type.instance_type)
-#])
+lse_type = deferred_type()
+
+
+'''@jitclass([
+    # Constructor variables
+    ('lse_state', lse_type),#LSE_State.class_type.instance_type)
+    ('edge_orientation_state', typeof([True])),
+    ('edge_permutation_state', typeof(numpy.zeros(1, dtype = int))),
+    ('center_AUF_state', typeof(numpy.zeros(1, dtype = int))),
+    ('misoriented_centers_orientation_state', typeof([True])),
+    ('edge_orientation_state_replacement', typeof([True])),
+    ('edge_permutation_state_in_place', typeof(numpy.zeros(1, dtype = int))),
+    # toString variables
+    ('data', typeof("")),
+    # Equality variables
+    ('other', lse_type),
+    # swap_pieces_permutation method
+    ('piece1', typeof(Pieces.UR)),
+    ('piece2', typeof(Pieces.UR)),
+    # cycle_pieces_permutation method
+    ('buffer', typeof(Pieces.UR)),
+    ('pieces', typeof((Pieces.UR, Pieces.UL))),
+    # apply_move method
+
+])'''
 class LSE_State(object):
     def __init__(self, lse_state = None):
         if lse_state is None:
