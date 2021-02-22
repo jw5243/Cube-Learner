@@ -95,6 +95,9 @@ class LSE_State(object):
                numpy.array_equal(self.edge_permutation_state, other.edge_permutation_state) and\
                numpy.array_equal(self.center_AUF_state, other.center_AUF_state)
 
+    def to_array(self):
+        pass
+
     def swap_pieces_permutation(self, piece1, piece2):
         self.edge_permutation_state[piece1], self.edge_permutation_state[piece2] = self.edge_permutation_state[piece2],\
                                                                                    self.edge_permutation_state[piece1]
